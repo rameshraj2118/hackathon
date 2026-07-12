@@ -1,0 +1,4 @@
+export type AuthUser = { id: string; name: string; email: string; role: string }
+type AuthResponse = { token: string; user: AuthUser }
+async function request<T>(path: string, init: RequestInit = {}) { let response: Response; try { response = await fetch(path, { ...init, headers: { 'Content-Type': 'application/json', ...init.headers } }) } catch { throw new Error('The API server is unavailable. Restart the app with npm run dev.') } const data = await response.json(); if (!response.ok) throw new Error(data.message || 'The request could not be completed.'); return data as T }
+export const authApi = { login: (email: string, password: string, remember: boolean) => request<AuthResponse>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password, remember }) }), me: (token: string) => request<{ user: AuthUser }>('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }) }

@@ -1,32 +1,19 @@
-# React + TypeScript + Vite
+# AssetNexsus
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+AssetNexsus is a component-based asset management interface with a local authentication API.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```powershell
+npm.cmd run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+This starts both the Vite client and the API at `http://localhost:4000`. The Vite development server proxies `/api` calls to that API.
+
+## Authentication API
+
+- `POST /api/auth/register` — create an account (`name`, `email`, `password`)
+- `POST /api/auth/login` — sign in (`email`, `password`, `remember`)
+- `GET /api/auth/me` — restore a session using `Authorization: Bearer <token>`
+
+Passwords are hashed with Node's `scrypt`. Local development users are kept in `server/data/db.json`; production should use a database, HTTPS-only cookies, rate limiting, and a secure `JWT_SECRET` environment variable.
