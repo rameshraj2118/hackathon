@@ -1,0 +1,3 @@
+.qr-code{display:block}
+.qr-code img{display:block;grid-column:1/-1;grid-row:1/-1;width:100%;height:100%;object-fit:contain}
+.qr-loading{grid-column:1/-1;grid-row:1/-1;display:grid;place-items:center;color:#607692;font-size:9px;text-align:center}
