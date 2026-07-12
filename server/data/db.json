@@ -15,6 +15,14 @@
       "role": "employee",
       "password": "ed47bf9217694dda73914ab007385145:0f1a197edcd742d10b983a7c6724919969d49cce0d7e956c927615d4237183d2c9b6efab1b713ddcb696f05fd6638f3f947401d98b0b2620065c13817657cdc7",
       "createdAt": "2026-07-12T05:55:36.449Z"
+    },
+    {
+      "id": "90372fd87821dde783d6a4a1",
+      "name": "SUYASH",
+      "email": "govindsinghmulewa700@gmail.com",
+      "role": "employee",
+      "password": "4f68a18267a78f902abec58ce9f1d43f:5bd5301cc388ab62fb87d9ff5783278877bc490a6c582e2d67893ededaf96bc315801459504ebdc8938a1887a005563d4ab810883743699280a88ca7dae7f487",
+      "createdAt": "2026-07-12T07:22:49.856Z"
     }
   ],
   "resetTokens": [],
