@@ -1,4 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '../context/AuthContext'
+import { dataApi } from '../services/dataApi'
+import './AllocationCompact.css'
 
 type AllocationStatus = 'Active' | 'Overdue' | 'Returned'
 type TransferStatus = 'Requested' | 'Approved' | 'Re-allocated'
@@ -57,6 +60,7 @@ function transferTone(status: TransferStatus | 'Denied') {
 }
 
 export function AllocationTransfer() {
+  const { token } = useAuth()
   const [allocations, setAllocations] = useState(initialAllocations)
   const [transfers, setTransfers] = useState(initialTransfers)
   const [activeTab, setActiveTab] = useState<'active' | 'history' | 'new'>('active')
@@ -69,6 +73,17 @@ export function AllocationTransfer() {
   const [returnCondition, setReturnCondition] = useState('Good')
   const [returnNotes, setReturnNotes] = useState('')
   const [notice, setNotice] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!token) return
+    Promise.all([dataApi.list<Allocation>('allocations', token), dataApi.list<Transfer>('transfers', token)])
+      .then(([allocationData, transferData]) => {
+        setAllocations(allocationData.allocations)
+        setTransfers(transferData.transfers)
+      })
+      .catch((reason) => setNotice(reason instanceof Error ? reason.message : 'Unable to load allocation records.'))
+  }, [token])
 
   const selectedAllocation = allocations.find((item) => item.assetTag === selectedAssetTag) ?? allocations[0]
   const activeAllocations = useMemo(() => allocations.filter((item) => item.status !== 'Returned'), [allocations])
@@ -82,7 +97,7 @@ export function AllocationTransfer() {
     detail: `${item.assetName} is currently held by ${item.holder}.`,
   })), [overdueAllocations])
 
-  const handleAllocate = () => {
+  const handleAllocate = async () => {
     const conflict = allocations.find((item) => item.assetTag === selectedAssetTag && item.status !== 'Returned')
     if (conflict) {
       setNotice(`${selectedAllocation.assetName} is currently held by ${conflict.holder}. Use Transfer Request instead.`)
@@ -102,12 +117,17 @@ export function AllocationTransfer() {
       status: isOverdue(expectedReturnDate) ? 'Overdue' : 'Active',
     }
 
-    setAllocations((current) => [nextAllocation, ...current.filter((item) => item.assetTag !== selectedAssetTag)])
-    setNotice(`Allocated ${nextAllocation.assetName} to ${nextAllocation.holder}.`)
-    setActiveTab('active')
+    if (!token) return
+    setSaving(true)
+    try {
+      await dataApi.save('allocations', nextAllocation, token)
+      setAllocations((current) => [nextAllocation, ...current.filter((item) => item.assetTag !== selectedAssetTag)])
+      setNotice(`Allocated ${nextAllocation.assetName} to ${nextAllocation.holder}.`)
+      setActiveTab('active')
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : 'Unable to save the allocation.') } finally { setSaving(false) }
   }
 
-  const handleTransferRequest = () => {
+  const handleTransferRequest = async () => {
     const currentHolder = allocations.find((item) => item.assetTag === selectedAssetTag && item.status !== 'Returned')
     if (!currentHolder) {
       setNotice('No active holder found. Allocate the asset first.')
@@ -129,25 +149,40 @@ export function AllocationTransfer() {
       history: [`Requested by ${requestor}`],
     }
 
-    setTransfers((current) => [transfer, ...current])
-    setNotice(`Transfer request created for ${transfer.assetTag}.`)
-    setActiveTab('history')
+    if (!token) return
+    setSaving(true)
+    try {
+      await dataApi.save('transfers', transfer, token)
+      setTransfers((current) => [transfer, ...current])
+      setNotice(`Transfer request created for ${transfer.assetTag}.`)
+      setActiveTab('history')
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : 'Unable to save the transfer request.') } finally { setSaving(false) }
   }
 
-  const handleApproveTransfer = (transferId: string) => {
-    setTransfers((current) => current.map((transfer) => {
-      if (transfer.id !== transferId) return transfer
-      const approvedBy = 'Asset Manager'
-      const nextHistory = [...transfer.history, `Approved by ${approvedBy}`, `Re-allocated to ${transfer.to}`]
-      setAllocations((items) => items.map((item) => item.assetTag === transfer.assetTag && item.status !== 'Returned'
-        ? { ...item, holder: transfer.to, holderType: 'Employee', department: 'Transferred', status: 'Active', expectedReturnDate: item.expectedReturnDate }
-        : item))
-      return { ...transfer, approvedBy, status: 'Re-allocated', history: nextHistory }
-    }))
-    setNotice('Transfer approved and allocation history updated.')
+  const handleApproveTransfer = async (transferId: string) => {
+    const currentTransfer = transfers.find((transfer) => transfer.id === transferId)
+    if (!currentTransfer || !token) return
+    const approvedBy = 'Asset Manager'
+    const transfer = { ...currentTransfer, approvedBy, status: 'Re-allocated' as const, history: [...currentTransfer.history, `Approved by ${approvedBy}`, `Re-allocated to ${currentTransfer.to}`] }
+    const allocation = allocations.find((item) => item.assetTag === transfer.assetTag && item.status !== 'Returned')
+    if (!allocation) return setNotice('The active allocation could not be found.')
+    const updatedAllocation = { ...allocation, holder: transfer.to, holderType: 'Employee' as const, department: 'Transferred', status: 'Active' as const }
+    setSaving(true)
+    try {
+      await Promise.all([dataApi.save('transfers', transfer, token), dataApi.save('allocations', updatedAllocation, token)])
+      setTransfers((current) => current.map((item) => item.id === transferId ? transfer : item))
+      setAllocations((items) => items.map((item) => item.id === updatedAllocation.id ? updatedAllocation : item))
+      setNotice('Transfer approved and allocation history updated.')
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : 'Unable to approve the transfer.') } finally { setSaving(false) }
   }
 
-  const handleReturn = () => {
+  const handleReturn = async () => {
+    const allocation = allocations.find((item) => item.assetTag === selectedAssetTag && item.status !== 'Returned')
+    if (!allocation || !token) return setNotice('No active allocation found for this asset.')
+    const updatedAllocation = { ...allocation, status: 'Returned' as const, notes: `${returnCondition} · ${returnNotes}`.trim() }
+    setSaving(true)
+    try { await dataApi.save('allocations', updatedAllocation, token) } catch (reason) { setNotice(reason instanceof Error ? reason.message : 'Unable to save the return.'); setSaving(false); return }
+    setSaving(false)
     setAllocations((current) => current.map((item) => item.assetTag === selectedAssetTag && item.status !== 'Returned'
       ? { ...item, status: 'Returned', notes: `${returnCondition} · ${returnNotes}`.trim() }
       : item))
@@ -290,7 +325,7 @@ export function AllocationTransfer() {
               Notes
               <input value={allocDepartment} onChange={(event) => setAllocDepartment(event.target.value)} placeholder="Department / allocation notes" />
             </label>
-            <button type="button" className="allocation-submit" onClick={handleAllocate}>Allocate Asset</button>
+            <button type="button" className="allocation-submit" onClick={handleAllocate} disabled={saving}>{saving ? 'Saving…' : 'Allocate Asset'}</button>
           </section>
 
           <section className="allocation-panel">
