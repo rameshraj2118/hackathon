@@ -63,6 +63,30 @@
       "role": "employee",
       "password": "b496e72ccab0d7ada7420d8406f4e815:bf064f4cc29d585892b79e14de9484f3d54fc754d5e6d5a10f7d7f545203f3136bc1fdefe9cc2bb334f16186a86710dfac81fcff2dd9ed54c57a5e93a469a81e",
       "createdAt": "2026-07-12T10:15:10.205Z"
+    },
+    {
+      "id": "336c3b40fc82d597b29292df",
+      "name": "Booking Check",
+      "email": "booking-check-90776308@assetnexsus.test",
+      "role": "employee",
+      "password": "65d2b0c1f4e27e88512f691ef199d905:1914f43648a1d420e1a008004c0557f75b29d9d50b0398c78d47d749f7ece45e625fd24e9b321ecf13dcf4038f20b4e27dad2f28e685c87c6a6bcd56b684dbee",
+      "createdAt": "2026-07-12T11:14:15.617Z"
+    },
+    {
+      "id": "52c37f5db060593dce772092",
+      "name": "Boundary Check",
+      "email": "booking-boundary-f3532dac@assetnexsus.test",
+      "role": "employee",
+      "password": "66dbe7320c0d39b88a5483d485ad9b60:a510c13e793ec04056a63a71556d20f41df8d9983b3a59b3c2e2af711ed5582ab6388867879c5985746b860dafca64b773068114fe95df9a28b19e1a08932045",
+      "createdAt": "2026-07-12T11:14:39.380Z"
+    },
+    {
+      "id": "172723b01e0521f76a14b374",
+      "name": "Route Check",
+      "email": "route-2216e35b@assetnexsus.test",
+      "role": "employee",
+      "password": "2ef3f9ccc2376480da56c649a90b8fb9:977f9f79484e4ed667da9848421ff3b0a6be757e5e331c93a3e44f5ecf3310f0666b23d21e8bb37a896c0ac604930859b6ec3069e8243cbeb2686f1ecc7f74fd",
+      "createdAt": "2026-07-12T11:43:07.632Z"
     }
   ],
   "resetTokens": [],

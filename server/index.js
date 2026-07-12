@@ -36,6 +36,15 @@ function allocationConflict(value) {
   const conflict = listRows('allocations').find((allocation) => allocation.id !== value.id && allocation.assetTag === value.assetTag && allocation.status !== 'Returned')
   return conflict ? `${value.assetTag} is currently held by ${conflict.holder}. Submit a transfer request instead.` : ''
 }
+function recordAction(table, value, user) {
+  const actor = user?.name || 'System', occurredAt = new Date().toISOString()
+  const id = randomBytes(12).toString('hex')
+  const subject = value.assetName || value.assetTag || value.resourceId || value.id
+  const action = table === 'allocations' ? (value.status === 'Returned' ? 'Asset Returned' : 'Asset Assigned') : table === 'maintenance' ? `Maintenance ${value.status}` : table === 'bookings' ? (value.status === 'Cancelled' ? 'Booking Cancelled' : value.status === 'Upcoming' ? 'Booking Confirmed' : `Booking ${value.status}`) : table === 'transfers' ? (value.status === 'Re-allocated' ? 'Transfer Approved' : 'Transfer Requested') : `${table} updated`
+  const detail = `${subject} — ${action}`
+  saveRow('audit_logs', 'id', { id, actor, action, detail, entity: table, occurredAt })
+  if (['Asset Assigned', 'Maintenance Approved', 'Maintenance Rejected', 'Booking Confirmed', 'Booking Cancelled', 'Transfer Approved'].includes(action)) saveRow('notifications', 'id', { id: randomBytes(12).toString('hex'), title: action, detail, tone: action.includes('Rejected') || action.includes('Cancelled') ? 'rose' : action.includes('Maintenance') ? 'orange' : 'teal', read: false, occurredAt })
+}
 async function body(request) { let raw = ''; for await (const chunk of request) raw += chunk; try { return JSON.parse(raw || '{}') } catch { return null } }
 const bearer = (request) => request.headers.authorization?.replace(/^Bearer\s+/i, '')
 async function authorizedUser(request) { const session = userFromToken(bearer(request) || ''); if (!session) return null; const data = await database(); return { data, user: data.users.find((entry) => entry.id === session.sub) || null } }
@@ -171,7 +180,7 @@ const server = createServer(async (request, response) => {
     if (conflict) return json(response, 409, { message: conflict })
     const existing = listRows('allocations').find((allocation) => allocation.id === value.id)
     if (!existing && !listRows('assets').some((asset) => asset.tag === value.assetTag)) return json(response, 404, { message: `Asset number ${value.assetTag} does not exist.` })
-    saveRow('allocations', 'id', value); syncAssetFromAllocation(value)
+    saveRow('allocations', 'id', value); syncAssetFromAllocation(value); recordAction('allocations', value, auth.user)
     return json(response, 200, { item: value })
   }
   if (['POST', 'PATCH'].includes(request.method || '') && url.pathname === '/api/transfers') {
@@ -179,10 +188,24 @@ const server = createServer(async (request, response) => {
     const value = await body(request)
     if (!value?.id || !value.assetTag || !value.assetName || !value.from || !value.to || !Array.isArray(value.history)) return json(response, 400, { message: 'Transfer details are incomplete or invalid.' })
     if (value.status === 'Re-allocated' && !['asset_manager', 'department_head', 'admin'].includes(auth.user.role)) return json(response, 403, { message: 'Only an Asset Manager or Department Head can approve a transfer.' })
-    saveRow('transfers', 'id', value)
+    saveRow('transfers', 'id', value); recordAction('transfers', value, auth.user)
     return json(response, 200, { item: value })
   }
-  const entity = url.pathname.match(/^\/api\/(assets|departments|categories|employees|resources|bookings|allocations|transfers|maintenance)(?:\/([^/]+))?$/)
+  if (['POST', 'PATCH'].includes(request.method || '') && url.pathname === '/api/bookings') {
+    const auth = await authorizedUser(request); if (!auth?.user) return json(response, 401, { message: 'Your session has expired. Please sign in again.' })
+    const value = await body(request), conflict = bookingConflict(value)
+    if (conflict) return json(response, 409, { message: conflict })
+    saveRow('bookings', 'id', value); syncResourceFromBooking(value); recordAction('bookings', value, auth.user)
+    return json(response, 200, { item: value })
+  }
+  if (['POST', 'PATCH'].includes(request.method || '') && url.pathname === '/api/maintenance') {
+    const auth = await authorizedUser(request); if (!auth?.user) return json(response, 401, { message: 'Your session has expired. Please sign in again.' })
+    const value = await body(request)
+    if (!value?.id || !value.assetTag || !value.assetName || !value.issue || !Array.isArray(value.history)) return json(response, 400, { message: 'Maintenance details are incomplete.' })
+    saveRow('maintenance', 'id', value); syncAssetFromMaintenance(value); recordAction('maintenance', value, auth.user)
+    return json(response, 200, { item: value })
+  }
+  const entity = url.pathname.match(/^\/api\/(assets|departments|categories|employees|resources|bookings|allocations|transfers|maintenance|notifications|audit_logs)(?:\/([^/]+))?$/)
   if (entity) { const auth = await authorizedUser(request); if (!auth?.user) return json(response, 401, { message: 'Your session has expired. Please sign in again.' }); const [_, table, id] = entity; const key = table === 'assets' ? 'tag' : table === 'departments' ? 'id' : table === 'categories' ? 'code' : table === 'employees' ? 'employee_id' : 'id'; const writes = request.method === 'POST' || request.method === 'PATCH' || request.method === 'DELETE'; if (writes && adminOnlyTables.has(table) && auth.user.role !== 'admin') return json(response, 403, { message: 'Only admins can modify organization setup.' }); if (request.method === 'DELETE' && table === 'assets' && !['admin', 'asset_manager'].includes(auth.user.role)) return json(response, 403, { message: 'Only admins and Asset Managers can delete assets.' }); if (request.method === 'GET') return json(response, 200, { [table]: listRows(table) }); if (request.method === 'POST' || request.method === 'PATCH') { const value = await body(request); if (!value || !value[key]) return json(response, 400, { message: `A ${key} is required.` }); if (table === 'departments' && !['Active', 'Inactive'].includes(value.status)) return json(response, 400, { message: 'Department status must be Active or Inactive.' }); if (table === 'employees' && value.role && !roles.has(value.role)) return json(response, 400, { message: 'Invalid employee role.' }); if (table === 'allocations' && (!value.assetTag || !value.assetName || !value.holder || !['Active', 'Overdue', 'Returned'].includes(value.status))) return json(response, 400, { message: 'Allocation details are incomplete or invalid.' }); if (table === 'transfers' && (!value.assetTag || !value.assetName || !value.from || !value.to || !Array.isArray(value.history))) return json(response, 400, { message: 'Transfer details are incomplete or invalid.' }); if (table === 'maintenance' && (!value.assetTag || !value.assetName || !value.issue || !Array.isArray(value.history))) return json(response, 400, { message: 'Maintenance details are incomplete.' }); if (table === 'bookings') { const conflict = bookingConflict(value); if (conflict) return json(response, 409, { message: conflict }) }; saveRow(table, key, value); if (table === 'allocations') syncAssetFromAllocation(value); if (table === 'bookings') syncResourceFromBooking(value); if (table === 'maintenance') syncAssetFromMaintenance(value); return json(response, 200, { item: value }) } if (request.method === 'DELETE' && id) { removeRow(table, key, id); return json(response, 204, {}) } }
   if (request.method === 'GET' && url.pathname === '/api/dashboard/overview') { const auth = await authorizedUser(request); if (!auth?.user) return json(response, 401, { message: 'Your session has expired. Please sign in again.' }); return json(response, 200, { dashboard: databaseDashboard() }) }
 /* Alternate merge branch retained below for reference:
