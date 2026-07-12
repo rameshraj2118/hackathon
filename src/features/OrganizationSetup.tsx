@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import { useAuth } from '../context/AuthContext'
+import { dataApi } from '../services/dataApi'
 
 type Department = { id: string; name: string; head: string; employees: number; status: 'Active' | 'Inactive' }
 type Category = { name: string; code: string; assets: number; custodian: string; status: 'Active' | 'Inactive' }
@@ -21,7 +23,7 @@ const initialCategories: Category[] = [
   { name: 'Vehicles', code: 'CAT-VEH', assets: 14, custodian: 'Operations', status: 'Active' },
   { name: 'Software Licenses', code: 'CAT-SW', assets: 67, custodian: 'Information Technology', status: 'Active' },
 ]
-const employees: Employee[] = [
+const employeesSeed: Employee[] = [
   { name: 'Arjun Mehta', employeeId: 'EMP-1001', department: 'Information Technology', role: 'Department Head', email: 'arjun@assetnesus.com', status: 'Active' },
   { name: 'Priya Sharma', employeeId: 'EMP-1002', department: 'Human Resources', role: 'Department Head', email: 'priya@assetnesus.com', status: 'Active' },
   { name: 'Rohan Gupta', employeeId: 'EMP-1003', department: 'Finance', role: 'Department Head', email: 'rohan@assetnesus.com', status: 'Active' },
@@ -34,20 +36,23 @@ const tabMeta: { id: SetupTab; label: string; icon: string }[] = [
 function ActionIcon({ children, label, onClick }: { children: string; label: string; onClick: () => void }) { return <button className="table-action" type="button" title={label} aria-label={label} onClick={onClick}>{children}</button> }
 
 export function OrganizationSetup() {
+  const { token } = useAuth()
   const [tab, setTab] = useState<SetupTab>('departments')
   const [departments, setDepartments] = useState(initialDepartments)
-  const categories = initialCategories
+  const [categories, setCategories] = useState(initialCategories)
+  const [employees, setEmployees] = useState<Employee[]>(employeesSeed)
   const [query, setQuery] = useState('')
   const [notice, setNotice] = useState('')
   const [editing, setEditing] = useState<Department | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  useEffect(() => { if (!token) return; Promise.all([dataApi.list<Department>('departments', token), dataApi.list<Category>('categories', token), dataApi.list<Employee & { employee_id?: string }>('employees', token)]).then(([departmentData, categoryData, employeeData]) => { if (departmentData.departments.length) setDepartments(departmentData.departments); if (categoryData.categories.length) setCategories(categoryData.categories); if (employeeData.employees.length) setEmployees(employeeData.employees.map((employee) => ({ ...employee, employeeId: employee.employeeId || employee.employee_id || '' }))) }).catch(() => setNotice('Unable to load organization data from the database.')) }, [token])
   const tabLabel = tab === 'departments' ? 'Department' : tab === 'categories' ? 'Category' : 'Employee'
   const filteredDepartments = useMemo(() => departments.filter((row) => row.name.toLowerCase().includes(query.toLowerCase())), [departments, query])
   const filteredCategories = useMemo(() => categories.filter((row) => row.name.toLowerCase().includes(query.toLowerCase())), [categories, query])
   const filteredEmployees = useMemo(() => employees.filter((row) => `${row.name} ${row.department}`.toLowerCase().includes(query.toLowerCase())), [query])
   const openNew = () => { if (tab !== 'departments') { setNotice(`New ${tabLabel.toLowerCase()} creation is ready for the next setup step.`); return }; setEditing(null); setModalOpen(true) }
   const editDepartment = (row: Department) => { setEditing(row); setModalOpen(true) }
-  const saveDepartment = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const form = new FormData(event.currentTarget); const name = String(form.get('name')).trim(), head = String(form.get('head')).trim(); if (!name || !head) return; if (editing) setDepartments((rows) => rows.map((row) => row.id === editing.id ? { ...row, name, head, status: String(form.get('status')) as Department['status'] } : row)); else setDepartments((rows) => [...rows, { id: `D${String(rows.length + 1).padStart(3, '0')}`, name, head, employees: Number(form.get('employees')) || 0, status: 'Active' }]); setModalOpen(false); setNotice(`${name} has been ${editing ? 'updated' : 'added'} successfully.`) }
+  const saveDepartment = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const form = new FormData(event.currentTarget); const name = String(form.get('name')).trim(), head = String(form.get('head')).trim(); if (!name || !head || !token) return; const record: Department = editing ? { ...editing, name, head, status: String(form.get('status')) as Department['status'] } : { id: `D${String(departments.length + 1).padStart(3, '0')}`, name, head, employees: Number(form.get('employees')) || 0, status: 'Active' }; try { await dataApi.save('departments', record, token); setDepartments((rows) => editing ? rows.map((row) => row.id === record.id ? record : row) : [...rows, record]); setModalOpen(false); setNotice(`${name} has been ${editing ? 'updated' : 'added'} successfully.`) } catch { setNotice('Department could not be saved to the database.') } }
   const showNotice = (message: string) => setNotice(message)
   return <section className="organization-page">
     <header className="org-header"><div><h1>Organization Setup</h1><p>Admin-only · Manage master data for departments, categories, and employees</p></div><div className="admin-pill"><span>◇</span> Admin access required</div></header>

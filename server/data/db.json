@@ -23,6 +23,22 @@
       "role": "employee",
       "password": "4f68a18267a78f902abec58ce9f1d43f:5bd5301cc388ab62fb87d9ff5783278877bc490a6c582e2d67893ededaf96bc315801459504ebdc8938a1887a005563d4ab810883743699280a88ca7dae7f487",
       "createdAt": "2026-07-12T07:22:49.856Z"
+    },
+    {
+      "id": "20e7fe9c332fe40e40bcce53",
+      "name": "SQLite Test",
+      "email": "sqlite-18c8a9e8@assetnexsus.test",
+      "role": "employee",
+      "password": "b0a6e4c5449d3b931523c9261b82eab2:10629dd2f16649c25ba153a2a150570fd3b4179ac056bf24a67a8a821c945d41c7d2b9be67db18eabbc31f9b80faa2cac831d5216fced4de3010204d796316da",
+      "createdAt": "2026-07-12T08:25:52.623Z"
+    },
+    {
+      "id": "87c7d6d0882de45a26f55c96",
+      "name": "SQLite Test",
+      "email": "sqlite-b0096d48@assetnexsus.test",
+      "role": "employee",
+      "password": "3bb35f8e1b908f182e6cb40e7421ee01:b8cb66335d2a90f6374e5d9efd6ac89419d0e050f5135edcd39db6fda3c38854b82a521953a472f4d9e3b5219f75b45ddc06935e914d0577d586a02bcf36ddd4",
+      "createdAt": "2026-07-12T08:26:49.483Z"
     }
   ],
   "resetTokens": [],
