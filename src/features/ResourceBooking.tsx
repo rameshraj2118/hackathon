@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '../context/AuthContext'
+import { dataApi } from '../services/dataApi'
 
 type BookingStatus = 'Upcoming' | 'Ongoing' | 'Completed' | 'Cancelled'
 
@@ -23,7 +25,7 @@ type Booking = {
   status: BookingStatus
 }
 
-const resources: Resource[] = [
+const initialResources: Resource[] = [
   { id: 'meeting-b2', code: 'AF-0008', name: 'Meeting Room B2', area: 'Block B · Floor 2', category: 'Meeting Rooms', status: 'Reserved' },
   { id: 'projector-a', code: 'AF-0005', name: 'Conference Room A — Projector', area: 'Conference Room A', category: 'Electronics', status: 'Available' },
   { id: 'innova', code: 'AF-0004', name: 'Toyota Innova Crysta', area: 'Ground Parking', category: 'Vehicles', status: 'Allocated' },
@@ -84,6 +86,8 @@ function bookingBlockHeight(start: string, end: string) {
 }
 
 export function ResourceBooking() {
+  const { token } = useAuth()
+  const [resources, setResources] = useState<Resource[]>(initialResources)
   const [bookings, setBookings] = useState(initialBookings)
   const [selectedResourceId, setSelectedResourceId] = useState('meeting-b2')
   const [resourceId, setResourceId] = useState('meeting-b2')
@@ -95,6 +99,21 @@ export function ResourceBooking() {
   const [purpose, setPurpose] = useState('')
   const [notice, setNotice] = useState('')
   const [isCreateOpen, setCreateOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!token) return
+    Promise.all([dataApi.list<Resource>('resources', token), dataApi.list<Booking>('bookings', token)])
+      .then(([resourceData, bookingData]) => {
+        setResources(resourceData.resources)
+        setBookings(bookingData.bookings)
+        if (resourceData.resources[0]) {
+          setSelectedResourceId((current) => resourceData.resources.some((resource) => resource.id === current) ? current : resourceData.resources[0].id)
+          setResourceId((current) => resourceData.resources.some((resource) => resource.id === current) ? current : resourceData.resources[0].id)
+        }
+      })
+      .catch((reason) => setNotice(reason instanceof Error ? reason.message : 'Unable to load booking records.'))
+  }, [token])
 
   const selectedResource = resources.find((item) => item.id === selectedResourceId) ?? resources[0]
   const selectedBookings = bookings.filter((booking) => booking.resourceId === selectedResource.id)
@@ -107,7 +126,8 @@ export function ResourceBooking() {
     })
   }, [selectedBookings])
 
-  const handleBook = () => {
+  const handleBook = async () => {
+    if (minutes(end) <= minutes(start)) return setNotice('End time must be after the start time.')
     const conflict = bookings.find((booking) => booking.resourceId === resourceId && overlaps(booking, date, start, end))
     if (conflict) {
       setNotice(`Time Conflict Detected: ${formatDate(date)} ${start}-${end} overlaps with ${conflict.person}'s booking.`)
@@ -124,21 +144,33 @@ export function ResourceBooking() {
       end,
       status: 'Upcoming',
     }
-    setBookings((current) => [...current, newBooking].sort((left, right) => `${left.date} ${left.start}`.localeCompare(`${right.date} ${right.start}`)))
-    setSelectedResourceId(resourceId)
-    setNotice(`Booking created for ${newBooking.person}.`)
-    setPerson('')
-    setDepartment('')
-    setPurpose('')
-    setCreateOpen(false)
+    if (!token) return
+    setSaving(true)
+    try {
+      await dataApi.save('bookings', newBooking, token)
+      setBookings((current) => [...current, newBooking].sort((left, right) => `${left.date} ${left.start}`.localeCompare(`${right.date} ${right.start}`)))
+      setSelectedResourceId(resourceId)
+      setNotice(`Booking created for ${newBooking.person}. A reminder will be shown before the slot starts.`)
+      setPerson('')
+      setDepartment('')
+      setPurpose('')
+      setCreateOpen(false)
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : 'Unable to save the booking.') } finally { setSaving(false) }
   }
 
-  const handleCancel = (bookingId: string) => {
-    setBookings((current) => current.map((booking) => booking.id === bookingId ? { ...booking, status: 'Cancelled' } : booking))
-    setNotice('Booking cancelled. The slot is now available for another request.')
+  const handleCancel = async (bookingId: string) => {
+    const booking = bookings.find((item) => item.id === bookingId)
+    if (!booking || !token) return
+    const cancelled = { ...booking, status: 'Cancelled' as const }
+    setSaving(true)
+    try {
+      await dataApi.save('bookings', cancelled, token)
+      setBookings((current) => current.map((item) => item.id === bookingId ? cancelled : item))
+      setNotice('Booking cancelled. The slot is now available for another request.')
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : 'Unable to cancel the booking.') } finally { setSaving(false) }
   }
 
-  const handleReschedule = (bookingId: string) => {
+  const handleReschedule = async (bookingId: string) => {
     const source = bookings.find((booking) => booking.id === bookingId)
     if (!source) return
     const movedDate = '2026-07-15'
@@ -149,8 +181,14 @@ export function ResourceBooking() {
       setNotice('Reschedule blocked because the new time overlaps with another booking.')
       return
     }
-    setBookings((current) => current.map((booking) => booking.id === bookingId ? { ...booking, date: movedDate, start: movedStart, end: movedEnd, status: 'Upcoming' } : booking))
-    setNotice('Booking rescheduled and reminder updated.')
+    if (!token) return
+    const rescheduled = { ...source, date: movedDate, start: movedStart, end: movedEnd, status: 'Upcoming' as const }
+    setSaving(true)
+    try {
+      await dataApi.save('bookings', rescheduled, token)
+      setBookings((current) => current.map((booking) => booking.id === bookingId ? rescheduled : booking))
+      setNotice('Booking rescheduled and reminder updated.')
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : 'Unable to reschedule the booking.') } finally { setSaving(false) }
   }
 
   return (
@@ -310,7 +348,7 @@ export function ResourceBooking() {
               </label>
               <div className="booking-modal-actions">
                 <button type="button" className="booking-secondary" onClick={() => setCreateOpen(false)}>Cancel</button>
-                <button type="button" className="booking-submit" onClick={handleBook}>Book slot</button>
+                <button type="button" className="booking-submit" onClick={handleBook} disabled={saving}>{saving ? 'Saving…' : 'Book slot'}</button>
               </div>
             </div>
           </div>

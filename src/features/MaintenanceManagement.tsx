@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '../context/AuthContext'
+import { dataApi } from '../services/dataApi'
 
 type MaintenanceStatus = 'Pending' | 'Approved' | 'Rejected' | 'Technician Assigned' | 'In Progress' | 'Resolved'
 
@@ -48,6 +50,7 @@ function historyLabel(status: MaintenanceStatus) {
 }
 
 export function MaintenanceManagement() {
+  const { token } = useAuth()
   const [items, setItems] = useState(initialItems)
   const [activeFilter, setActiveFilter] = useState<'All' | MaintenanceStatus | 'Rejected'>('All')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -56,6 +59,13 @@ export function MaintenanceManagement() {
   const [priority, setPriority] = useState<MaintenanceItem['priority']>('Low')
   const [photoName, setPhotoName] = useState('')
   const [notice, setNotice] = useState('')
+
+  useEffect(() => {
+    if (!token) return
+    dataApi.list<MaintenanceItem>('maintenance', token)
+      .then((data) => setItems(data.maintenance.length ? data.maintenance : initialItems))
+      .catch((reason) => setNotice(reason instanceof Error ? reason.message : 'Unable to load maintenance records.'))
+  }, [token])
 
   const total = items.length
   const pendingCount = items.filter((item) => item.status === 'Pending').length
@@ -69,7 +79,7 @@ export function MaintenanceManagement() {
 
   const approvedOnes = items.filter((item) => item.status === 'Approved' || item.status === 'Technician Assigned' || item.status === 'In Progress')
 
-  const handleRaiseRequest = () => {
+  const handleRaiseRequest = async () => {
     const next: MaintenanceItem = {
       id: crypto.randomUUID(),
       assetTag,
@@ -82,27 +92,44 @@ export function MaintenanceManagement() {
       raisedOn: '2026-07-12',
       history: ['Pending review'],
     }
-    setItems((current) => [next, ...current])
-    setNotice(`Request raised for ${next.assetTag}${photoName ? ` with ${photoName}` : ''}.`)
-    setDialogOpen(false)
-    setPhotoName('')
+    if (!token) return
+    try {
+      await dataApi.save('maintenance', next, token)
+      setItems((current) => [next, ...current])
+      setNotice(`Request raised for ${next.assetTag}${photoName ? ` with ${photoName}` : ''}.`)
+      setDialogOpen(false)
+      setPhotoName('')
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : 'Unable to save maintenance request.') }
   }
 
-  const advanceStatus = (id: string) => {
-    setItems((current) => current.map((item) => {
-      if (item.id !== id) return item
-      if (item.status === 'Pending') return { ...item, status: 'Approved', assetStatus: 'Under Maintenance', history: [...item.history, 'Approved by Asset Manager', 'Asset status set to Under Maintenance'] }
-      if (item.status === 'Approved') return { ...item, status: 'Technician Assigned', assignedTo: item.assignedTo ?? 'Technician Team', history: [...item.history, 'Technician assigned'] }
-      if (item.status === 'Technician Assigned') return { ...item, status: 'In Progress', history: [...item.history, 'Work started'] }
-      if (item.status === 'In Progress') return { ...item, status: 'Resolved', assetStatus: 'Available', history: [...item.history, 'Resolved', 'Asset status set to Available'] }
-      return item
-    }))
-    setNotice('Maintenance workflow advanced and asset status updated accordingly.')
+  const advanceStatus = async (id: string) => {
+    const item = items.find((entry) => entry.id === id)
+    if (!item || !token) return
+    const updated = item.status === 'Pending'
+      ? { ...item, status: 'Approved' as const, assetStatus: 'Under Maintenance' as const, history: [...item.history, 'Approved by Asset Manager', 'Asset status set to Under Maintenance'] }
+      : item.status === 'Approved'
+        ? { ...item, status: 'Technician Assigned' as const, assignedTo: item.assignedTo ?? 'Technician Team', history: [...item.history, 'Technician assigned'] }
+        : item.status === 'Technician Assigned'
+          ? { ...item, status: 'In Progress' as const, history: [...item.history, 'Work started'] }
+          : item.status === 'In Progress'
+            ? { ...item, status: 'Resolved' as const, assetStatus: 'Available' as const, history: [...item.history, 'Resolved', 'Asset status set to Available'] }
+            : item
+    try {
+      await dataApi.save('maintenance', updated, token)
+      setItems((current) => current.map((entry) => entry.id === id ? updated : entry))
+      setNotice('Maintenance workflow advanced and asset status updated accordingly.')
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : 'Unable to update maintenance workflow.') }
   }
 
-  const markRejected = (id: string) => {
-      setItems((current) => current.map((item) => item.id === id ? { ...item, status: 'Rejected', assetStatus: 'Available', history: [...item.history, 'Rejected by Asset Manager', 'Asset status remains Available'] } : item))
-    setNotice('Request rejected by Asset Manager.')
+  const markRejected = async (id: string) => {
+    const item = items.find((entry) => entry.id === id)
+    if (!item || !token) return
+    const rejected = { ...item, status: 'Rejected' as const, assetStatus: 'Available' as const, history: [...item.history, 'Rejected by Asset Manager', 'Asset status remains Available'] }
+    try {
+      await dataApi.save('maintenance', rejected, token)
+      setItems((current) => current.map((entry) => entry.id === id ? rejected : entry))
+      setNotice('Request rejected by Asset Manager.')
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : 'Unable to reject maintenance request.') }
   }
 
   return (

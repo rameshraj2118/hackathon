@@ -36,7 +36,7 @@ const tabMeta: { id: SetupTab; label: string; icon: string }[] = [
 function ActionIcon({ children, label, onClick }: { children: string; label: string; onClick: () => void }) { return <button className="table-action" type="button" title={label} aria-label={label} onClick={onClick}>{children}</button> }
 
 export function OrganizationSetup() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const [tab, setTab] = useState<SetupTab>('departments')
   const [departments, setDepartments] = useState(initialDepartments)
   const [categories, setCategories] = useState(initialCategories)
@@ -46,6 +46,7 @@ export function OrganizationSetup() {
   const [editing, setEditing] = useState<Department | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   useEffect(() => { if (!token) return; Promise.all([dataApi.list<Department>('departments', token), dataApi.list<Category>('categories', token), dataApi.list<Employee & { employee_id?: string }>('employees', token)]).then(([departmentData, categoryData, employeeData]) => { if (departmentData.departments.length) setDepartments(departmentData.departments); if (categoryData.categories.length) setCategories(categoryData.categories); if (employeeData.employees.length) setEmployees(employeeData.employees.map((employee) => ({ ...employee, employeeId: employee.employeeId || employee.employee_id || '' }))) }).catch(() => setNotice('Unable to load organization data from the database.')) }, [token])
+  if (user?.role !== 'admin') return <section className="organization-page"><header className="org-header"><div><h1>Organization Setup</h1><p>Only administrators can manage departments, categories, employees, and role promotions.</p></div><div className="admin-pill">Admin access required</div></header></section>
   const tabLabel = tab === 'departments' ? 'Department' : tab === 'categories' ? 'Category' : 'Employee'
   const filteredDepartments = useMemo(() => departments.filter((row) => row.name.toLowerCase().includes(query.toLowerCase())), [departments, query])
   const filteredCategories = useMemo(() => categories.filter((row) => row.name.toLowerCase().includes(query.toLowerCase())), [categories, query])
