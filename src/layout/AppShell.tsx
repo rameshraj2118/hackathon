@@ -9,12 +9,9 @@ import { MaintenanceManagement } from '../features/MaintenanceManagement'
 import { AuditCycles } from '../features/AuditCycles'
 import { TabPlaceholder } from '../features/TabPlaceholder'
 import { OrganizationSetup } from '../features/OrganizationSetup'
-export function AppShell({ onSignOut }: { onSignOut: () => void }) { const [activeTab, setActiveTab] = useState<TabId>('dashboard'); return <div className="app-shell"><Sidebar activeTab={activeTab} onSelect={setActiveTab} onSignOut={onSignOut}/><main className="app-content">{activeTab === 'dashboard' ? <Dashboard /> : activeTab === 'qr-management' ? <QrManagement /> : activeTab === 'resource-booking' ? <ResourceBooking /> : activeTab === 'allocation-transfer' ? <AllocationTransfer /> : activeTab === 'maintenance' ? <MaintenanceManagement /> : activeTab === 'audit-cycles' ? <AuditCycles /> : activeTab === 'organization-setup' ? <OrganizationSetup /> : <TabPlaceholder tab={activeTab} />}</main></div> }
-import { OrganizationSetup } from '../features/OrganizationSetup'
-import { TabPlaceholder } from '../features/TabPlaceholder'
 
 export function AppShell({ onSignOut }: { onSignOut: () => void }) {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard')
-  const content = activeTab === 'dashboard' ? <Dashboard /> : activeTab === 'qr-management' ? <QrManagement /> : activeTab === 'resource-booking' ? <ResourceBooking /> : activeTab === 'allocation-transfer' ? <AllocationTransfer /> : activeTab === 'maintenance' ? <MaintenanceManagement /> : activeTab === 'organization-setup' ? <OrganizationSetup /> : <TabPlaceholder tab={activeTab} />
+  const content = activeTab === 'dashboard' ? <Dashboard /> : activeTab === 'qr-management' ? <QrManagement /> : activeTab === 'resource-booking' ? <ResourceBooking /> : activeTab === 'allocation-transfer' ? <AllocationTransfer /> : activeTab === 'maintenance' ? <MaintenanceManagement /> : activeTab === 'audit-cycles' ? <AuditCycles /> : activeTab === 'organization-setup' ? <OrganizationSetup /> : <TabPlaceholder tab={activeTab} />
   return <div className="app-shell"><Sidebar activeTab={activeTab} onSelect={setActiveTab} onSignOut={onSignOut}/><main className="app-content">{content}</main></div>
 }
