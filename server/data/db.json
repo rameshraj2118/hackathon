@@ -9,5 +9,251 @@
       "createdAt": "2026-07-12T04:46:53.295Z"
     }
   ],
-  "resetTokens": []
+  "resetTokens": [],
+  "companyDashboard": {
+    "company": {
+      "name": "Northstar Holdings",
+      "date": "Saturday, 12 July 2026"
+    },
+    "metrics": [
+      {
+        "label": "Total Assets",
+        "value": 342,
+        "icon": "cube",
+        "tone": "slate"
+      },
+      {
+        "label": "Available",
+        "value": 127,
+        "icon": "check",
+        "tone": "teal"
+      },
+      {
+        "label": "Allocated",
+        "value": 158,
+        "icon": "transfer",
+        "tone": "teal"
+      },
+      {
+        "label": "Maintenance",
+        "value": 18,
+        "icon": "wrench",
+        "tone": "orange"
+      },
+      {
+        "label": "Active Bookings",
+        "value": 4,
+        "icon": "calendar",
+        "tone": "purple"
+      },
+      {
+        "label": "Overdue Returns",
+        "value": 3,
+        "icon": "alert",
+        "tone": "rose",
+        "note": "Needs action"
+      }
+    ],
+    "allocation": [
+      {
+        "label": "Available",
+        "value": 127,
+        "tone": "teal"
+      },
+      {
+        "label": "Allocated",
+        "value": 158,
+        "tone": "green"
+      },
+      {
+        "label": "Other",
+        "value": 57,
+        "tone": "slate"
+      }
+    ],
+    "statuses": [
+      {
+        "label": "Available",
+        "value": 127,
+        "tone": "teal"
+      },
+      {
+        "label": "Allocated",
+        "value": 158,
+        "tone": "teal"
+      },
+      {
+        "label": "Maintenance",
+        "value": 18,
+        "tone": "orange"
+      },
+      {
+        "label": "Reserved",
+        "value": 9,
+        "tone": "purple"
+      },
+      {
+        "label": "Lost",
+        "value": 3,
+        "tone": "rose"
+      },
+      {
+        "label": "Retired",
+        "value": 27,
+        "tone": "slate"
+      }
+    ],
+    "departments": [
+      {
+        "name": "IT",
+        "assets": 85,
+        "bookings": 18
+      },
+      {
+        "name": "Operations",
+        "assets": 72,
+        "bookings": 27
+      },
+      {
+        "name": "Finance",
+        "assets": 38,
+        "bookings": 8
+      },
+      {
+        "name": "Marketing",
+        "assets": 31,
+        "bookings": 22
+      },
+      {
+        "name": "HR",
+        "assets": 24,
+        "bookings": 15
+      },
+      {
+        "name": "Facilities",
+        "assets": 88,
+        "bookings": 6
+      }
+    ],
+    "maintenance": [
+      {
+        "month": "Feb",
+        "requests": 5,
+        "resolved": 5
+      },
+      {
+        "month": "Mar",
+        "requests": 8,
+        "resolved": 7
+      },
+      {
+        "month": "Apr",
+        "requests": 6,
+        "resolved": 6
+      },
+      {
+        "month": "May",
+        "requests": 10,
+        "resolved": 8
+      },
+      {
+        "month": "Jun",
+        "requests": 7,
+        "resolved": 7
+      },
+      {
+        "month": "Jul",
+        "requests": 6,
+        "resolved": 2
+      }
+    ],
+    "bookingHeatmap": [
+      [
+        1,
+        2,
+        3,
+        4,
+        1,
+        0,
+        2,
+        3,
+        2,
+        1
+      ],
+      [
+        1,
+        3,
+        4,
+        4,
+        2,
+        0,
+        3,
+        4,
+        3,
+        2
+      ],
+      [
+        1,
+        3,
+        4,
+        4,
+        2,
+        1,
+        3,
+        4,
+        3,
+        2
+      ],
+      [
+        1,
+        2,
+        3,
+        2,
+        1,
+        1,
+        2,
+        3,
+        2,
+        1
+      ],
+      [
+        1,
+        2,
+        3,
+        2,
+        1,
+        0,
+        2,
+        3,
+        1,
+        1
+      ]
+    ],
+    "activities": [
+      {
+        "tone": "rose",
+        "title": "Overdue Return Alert",
+        "detail": "HP LaserJet Pro (AF-0003) assigned to Priya Sharma is 337 days overdue.",
+        "time": "2 hours ago"
+      },
+      {
+        "tone": "orange",
+        "title": "Maintenance Request Pending",
+        "detail": "Toyota Innova AC issue raised by Rahul Verma awaiting approval.",
+        "time": "4 hours ago"
+      },
+      {
+        "tone": "purple",
+        "title": "Booking Confirmed",
+        "detail": "Meeting Room B2 booked by Priya Sharma on Jul 14, 09:00-10:30.",
+        "time": "5 hours ago"
+      },
+      {
+        "tone": "teal",
+        "title": "Asset Assigned",
+        "detail": "iPad Pro 12.9 (AF-0011) allocated to Rohan Gupta by Asset Manager.",
+        "time": "1 day ago"
+      }
+    ]
+  }
 }
