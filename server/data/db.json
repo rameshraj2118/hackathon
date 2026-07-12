@@ -7,6 +7,14 @@
       "role": "member",
       "password": "46e16579cce90955c11ea4d9f4f98595:614d32a766b1a68b1eddb4be7fd5321b9bc23bacd4cc7935d6bf346d07f1457f23526674c0103233ab60c07785ff253efec76ca48fba8456e8e532884d95fc08",
       "createdAt": "2026-07-12T04:46:53.295Z"
+    },
+    {
+      "id": "8f566bf618b128e43518d525",
+      "name": "Ramesh Choudhary",
+      "email": "cbs80200@gmail.com",
+      "role": "employee",
+      "password": "ed47bf9217694dda73914ab007385145:0f1a197edcd742d10b983a7c6724919969d49cce0d7e956c927615d4237183d2c9b6efab1b713ddcb696f05fd6638f3f947401d98b0b2620065c13817657cdc7",
+      "createdAt": "2026-07-12T05:55:36.449Z"
     }
   ],
   "resetTokens": [],
